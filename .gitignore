@@ -1,3 +1,6 @@
+whisper.cpp/
+models/
+
 models/*
 whisper.cpp/*
 __pycache__/*
