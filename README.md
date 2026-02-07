@@ -10,7 +10,22 @@ Mic → VAD (Silero) → Whisper (whisper.cpp) → WebSocket → Extension
 
 ```bash
 ./setup.sh      # clones whisper.cpp, builds with CMake, downloads model, installs deps
-python3 server.py
+```
+
+### Python Virtual Environment
+
+It's recommended to install dependencies in a virtual environment:
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it
+source venv/bin/activate  # macOS/Linux
+# or: venv\Scripts\activate  # Windows
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
 ### Setup Requirements
@@ -31,6 +46,21 @@ After initial setup, the server works completely offline:
 - VAD cached at: `~/.cache/torch/hub/`
 - Whisper model at: `./models/ggml-base.en.bin`
 - whisper.cpp binary at: `./whisper.cpp/build/bin/whisper-cli`
+
+### Running the Server
+
+After completing the setup, start the server:
+
+```bash
+python3 server.py
+```
+
+The WebSocket server runs on `localhost:8765` by default. You can configure the host and port in [config.py](config.py):
+
+```python
+WS_HOST = "localhost"
+WS_PORT = 8765
+```
 
 ### Troubleshooting
 - **"Downloading..." on first run** — normal, Silero VAD auto-downloads once
