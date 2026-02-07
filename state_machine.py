@@ -48,8 +48,27 @@ class StateMachine:
         # Sort by length descending so "tab whisperer" matches before "tab"
         self._wake_patterns = sorted(WAKE_WORDS, key=len, reverse=True)
 
+        # Build regex patterns that tolerate punctuation/whitespace between words
+        # "hey tab" → matches "hey tab", "hey, tab", "hey. tab", "hey  tab"
+        self._wake_regexes = []
+        for phrase in self._wake_patterns:
+            words = phrase.lower().split()
+            # Between each word, allow optional punctuation + whitespace
+            pattern = r'[\s,.\-!?]*'.join(re.escape(w) for w in words)
+            self._wake_regexes.append((phrase, re.compile(pattern, re.IGNORECASE)))
+
         print(f"[StateMachine] Initialized in {self.state.value} mode")
         print(f"[StateMachine] Wake words: {self._wake_patterns}")
+
+    def update_wake_words(self, wake_words: list[str]):
+        """Update wake words at runtime (e.g. from extension config message)."""
+        self._wake_patterns = sorted(wake_words, key=len, reverse=True)
+        self._wake_regexes = []
+        for phrase in self._wake_patterns:
+            words = phrase.lower().split()
+            pattern = r'[\s,.\-!?]*'.join(re.escape(w) for w in words)
+            self._wake_regexes.append((phrase, re.compile(pattern, re.IGNORECASE)))
+        print(f"[StateMachine] Wake words updated: {self._wake_patterns}")
 
     def extract_wake_word(self, text: str) -> tuple[bool, str]:
         """
@@ -64,18 +83,19 @@ class StateMachine:
             "hey tab"              → (True, "")
             "random speech"        → (False, "")
         """
-        text_lower = text.lower().strip()
+        text_stripped = text.strip()
 
-        for wake_word in self._wake_patterns:
-            idx = text_lower.find(wake_word)
-            if idx != -1:
-                # Extract everything after the wake word
-                after = text[idx + len(wake_word):].strip()
+        for phrase, pattern in self._wake_regexes:
+            match = pattern.search(text_stripped)
+            if match:
+                # Extract everything after the matched wake word region
+                after = text_stripped[match.end():].strip()
                 # Clean up common filler between wake word and command
                 # e.g. "hey tab, please group..." → "please group..."
-                after = re.sub(r'^[,.\s!]+', '', after).strip()
+                after = re.sub(r'^[,.\s!?]+', '', after).strip()
 
-                print(f"[StateMachine] Wake word '{wake_word}' found in '{text}'")
+                print(f"[StateMachine] Wake word '{phrase}' matched "
+                      f"'{text_stripped[match.start():match.end()]}' in '{text_stripped[:60]}'")
                 if after:
                     print(f"[StateMachine] Remainder after wake word: '{after}'")
                 return True, after

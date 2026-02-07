@@ -128,6 +128,15 @@ class VoiceServer:
 
             elif msg_type == "config":
                 print(f"[Server] Config update: {data}")
+                # Apply wake word change if provided
+                new_wake = data.get("wake_word")
+                if new_wake and isinstance(new_wake, str):
+                    from config import WAKE_WORDS
+                    WAKE_WORDS.clear()
+                    WAKE_WORDS.append(new_wake.lower())
+                    # Rebuild state machine's regex patterns with new wake word
+                    self.state_machine.update_wake_words(WAKE_WORDS)
+                    print(f"[Server] Wake word updated to: '{new_wake}'")
 
             elif msg_type == "ack":
                 print(f"[Server] Command acknowledged: {data.get('result')}")

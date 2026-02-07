@@ -29,7 +29,7 @@ WHISPER_MODEL_PATH = "./models"  # Path to model files
 WHISPER_THREADS = os.cpu_count() or 4  # Match available CPU cores
 
 # Wake word
-WAKE_WORDS = ["hey tab", "tab whisperer"]  # Case-insensitive matches
+WAKE_WORDS = ["hey fox"]  # Case-insensitive matches
 WAKE_WORD_TIMEOUT_S = 10  # Timeout after wake if no command (was 5 — too short)
 
 # WebSocket
