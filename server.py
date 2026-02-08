@@ -149,6 +149,12 @@ class VoiceServer:
             elif msg_type == "ack":
                 print(f"[Server] Command acknowledged: {data.get('result')}")
 
+            elif msg_type == "busy":
+                print(f"[Server] Extension busy: {data.get('commandId')}")
+
+            elif msg_type == "ready":
+                print("[Server] Extension ready for next command")
+
             else:
                 print(f"[Server] Unknown message type: {msg_type}")
 
