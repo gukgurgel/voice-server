@@ -55,18 +55,22 @@ pip install -r requirements.txt
 ### Setup Requirements
 
 #### Internet Required (First Run)
+
 1. **Silero VAD**: Auto-downloads (~2.5 MB) on first `python3 server.py` run
 2. **Whisper Model**: Downloaded by `setup.sh` via whisper.cpp's model script
 3. **whisper.cpp**: Cloned from GitHub and built with CMake
 
 #### Build Dependencies
+
 - Python 3.8+
 - CMake (build whisper.cpp)
 - A C/C++ compiler (gcc/clang)
 - A working microphone
 
 #### Offline Operation
+
 After initial setup, the server works completely offline:
+
 - VAD cached at: `~/.cache/torch/hub/`
 - Passive model (wake word): `./models/ggml-base.en.bin`
 - Active model (commands): `./models/ggml-large-v3-turbo.bin`
@@ -88,6 +92,7 @@ WS_PORT = 8765
 ```
 
 ### Troubleshooting
+
 - **"Downloading..." on first run** — normal, Silero VAD auto-downloads once
 - **No internet?** Run `setup.sh` on a connected machine, copy entire directory
 - **Firewall issues?** Pre-download VAD: `python3 -c "import torch; torch.hub.load('snakers4/silero-vad', 'silero_vad')"`
@@ -123,12 +128,12 @@ python3 ws_monitor.py --interactive
 
 #### Interactive mode commands
 
-| Command | Sends | Purpose |
-|---------|-------|---------|
-| `wake` | `{"type": "start_listening"}` | Manual trigger (skip wake word) |
-| `stop` | `{"type": "stop_listening"}` | Cancel current listening session |
+| Command      | Sends                                 | Purpose                           |
+| ------------ | ------------------------------------- | --------------------------------- |
+| `wake`       | `{"type": "start_listening"}`         | Manual trigger (skip wake word)   |
+| `stop`       | `{"type": "stop_listening"}`          | Cancel current listening session  |
 | `ack <text>` | `{"type": "ack", "result": "<text>"}` | Simulate extension acknowledgment |
-| `raw <json>` | *(the raw JSON you type)* | Send any arbitrary message |
+| `raw <json>` | _(the raw JSON you type)_             | Send any arbitrary message        |
 
 #### Log file format
 
@@ -155,3 +160,4 @@ cat session.jsonl | jq -r '.data.type' | sort | uniq -c
 #### Note on single-client mode
 
 The voice server accepts one WebSocket client at a time. If the extension is already connected and you start the monitor, it will replace the extension's connection. Use the monitor **instead of** the extension during debugging, not alongside it.
+

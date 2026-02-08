@@ -21,7 +21,7 @@ import asyncio
 from config import (
     SAMPLE_RATE, CHANNELS, WHISPER_PATH, WHISPER_MODEL_PATH,
     WHISPER_PASSIVE_MODEL, WHISPER_ACTIVE_MODEL, WHISPER_LANGUAGE,
-    WHISPER_THREADS, MAX_RECORDING_DURATION_S
+    WHISPER_THREADS, MAX_RECORDING_DURATION_S, WAKE_WORDS
 )
 
 
@@ -115,7 +115,7 @@ class WhisperTranscriber:
             tmp_out_txt = tmp_out_base + ".txt"
 
             # Run whisper-cli
-            text = await self._run_whisper(tmp_wav_path, tmp_out_base, model_path)
+            text = await self._run_whisper(tmp_wav_path, tmp_out_base, model_path, active)
             return text
 
         except Exception as e:
@@ -133,12 +133,16 @@ class WhisperTranscriber:
                     except OSError:
                         pass
 
-    async def _run_whisper(self, audio_path: str, output_base: str, model_path: Path) -> Optional[str]:
+    async def _run_whisper(self, audio_path: str, output_base: str, model_path: Path, active: bool = False) -> Optional[str]:
         """
         Run whisper.cpp binary and return transcribed text.
 
         Strategy: Use -otxt --output-file to write clean text to a file.
         This avoids all stdout parsing issues (timestamps, color codes, etc).
+
+        In passive mode, uses --prompt to condition the decoder on the wake word,
+        making it significantly more likely to correctly transcribe "hey fox"
+        even with the tiny model.
         """
         cmd = [
             str(self.whisper_path),
@@ -150,6 +154,15 @@ class WhisperTranscriber:
             '--output-file', output_base,    # Write to this path (+ .txt appended)
             '--no-prints',                   # Suppress progress/debug to stderr
         ]
+
+        # In passive mode, condition the decoder on the wake word.
+        # This biases Whisper's token probabilities toward "hey fox",
+        # dramatically improving recognition accuracy for short phrases
+        # especially with smaller models like tiny.en.
+        if not active and WAKE_WORDS:
+            prompt = ", ".join(WAKE_WORDS)
+            cmd.extend(['--prompt', prompt])
+            print(f"[Whisper] Using prompt conditioning: '{prompt}'")
 
         try:
             process = await asyncio.create_subprocess_exec(

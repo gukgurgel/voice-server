@@ -61,15 +61,18 @@ class VoiceServer:
     # --- State machine callbacks ---
 
     async def on_wake(self):
+        self.vad.set_mode("active")  # Longer silence timeout for command capture
         await self.send_message("wake")
 
     async def on_listening(self):
         await self.send_message("listening")
 
     async def on_command(self, text: str):
+        self.vad.set_mode("passive")  # Back to short silence for wake word
         await self.send_message("command", text=text)
 
     async def on_error(self, error: str):
+        self.vad.set_mode("passive")  # Back to short silence on error too
         await self.send_message("error", message=error)
 
     # --- Audio pipeline ---
@@ -128,6 +131,7 @@ class VoiceServer:
                 await self.state_machine.manual_trigger()
 
             elif msg_type == "stop_listening":
+                self.vad.set_mode("passive")  # Reset VAD to short silence
                 await self.state_machine.stop()
 
             elif msg_type == "config":

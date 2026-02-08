@@ -11,7 +11,7 @@ import numpy as np
 from typing import Optional
 from config import (
     SAMPLE_RATE, VAD_THRESHOLD, VAD_MIN_SPEECH_DURATION_MS,
-    VAD_MIN_SILENCE_DURATION_MS, VAD_CHUNK_DURATION_MS,
+    VAD_PASSIVE_SILENCE_MS, VAD_ACTIVE_SILENCE_MS, VAD_CHUNK_DURATION_MS,
     MAX_AUDIO_BUFFER_FRAMES
 )
 
@@ -38,14 +38,38 @@ class VADDetector:
         self.min_speech_frames = max(1, int(
             VAD_MIN_SPEECH_DURATION_MS / VAD_CHUNK_DURATION_MS
         ))
-        self.min_silence_frames = max(1, int(
-            VAD_MIN_SILENCE_DURATION_MS / VAD_CHUNK_DURATION_MS
+
+        # Dynamic silence thresholds for passive (wake word) vs active (command) modes
+        self._passive_silence_frames = max(1, int(
+            VAD_PASSIVE_SILENCE_MS / VAD_CHUNK_DURATION_MS
         ))
+        self._active_silence_frames = max(1, int(
+            VAD_ACTIVE_SILENCE_MS / VAD_CHUNK_DURATION_MS
+        ))
+
+        # Start in passive mode (shorter silence timeout for wake word detection)
+        self.min_silence_frames = self._passive_silence_frames
 
         print(f"[VAD] Initialized (threshold={VAD_THRESHOLD}, "
               f"chunk={VAD_CHUNK_DURATION_MS}ms, "
               f"min_speech={self.min_speech_frames} frames, "
-              f"min_silence={self.min_silence_frames} frames)")
+              f"passive_silence={self._passive_silence_frames} frames, "
+              f"active_silence={self._active_silence_frames} frames)")
+
+    def set_mode(self, mode: str):
+        """
+        Switch VAD silence timeout between passive and active modes.
+
+        Args:
+            mode: "passive" (short silence for wake word) or "active" (long silence for commands)
+        """
+        if mode == "passive":
+            self.min_silence_frames = self._passive_silence_frames
+        elif mode == "active":
+            self.min_silence_frames = self._active_silence_frames
+        else:
+            raise ValueError(f"Unknown VAD mode: {mode}")
+        print(f"[VAD] Mode → {mode} (silence={self.min_silence_frames} frames)")
 
     def process_chunk(self, audio_chunk: np.ndarray) -> tuple[bool, Optional[np.ndarray]]:
         """
