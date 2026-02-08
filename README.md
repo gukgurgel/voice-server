@@ -44,7 +44,8 @@ pip install -r requirements.txt
 #### Offline Operation
 After initial setup, the server works completely offline:
 - VAD cached at: `~/.cache/torch/hub/`
-- Whisper model at: `./models/ggml-base.en.bin`
+- Passive model (wake word): `./models/ggml-base.en.bin`
+- Active model (commands): `./models/ggml-large-v3-turbo.bin`
 - whisper.cpp binary at: `./whisper.cpp/build/bin/whisper-cli`
 
 ### Running the Server

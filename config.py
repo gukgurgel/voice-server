@@ -22,7 +22,10 @@ VAD_MIN_SILENCE_DURATION_MS = 400  # Silence duration to end utterance
 VAD_SPEECH_PAD_MS = 300  # Padding before/after speech
 
 # Whisper settings
-WHISPER_MODEL = "base.en"  # Options: tiny.en, base.en, small.en
+# Passive model: lightweight, used for wake word detection (runs constantly)
+WHISPER_PASSIVE_MODEL = "base.en"     # Fast & cheap — just needs to catch "hey fox"
+# Active model: high-quality, used for command transcription (runs once per command)
+WHISPER_ACTIVE_MODEL = "large-v3-turbo"  # Best accuracy for actual commands
 WHISPER_LANGUAGE = "en"
 WHISPER_PATH = "./whisper.cpp/build/bin/whisper-cli"  # CMake build output
 WHISPER_MODEL_PATH = "./models"  # Path to model files

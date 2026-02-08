@@ -21,7 +21,8 @@ import sys
 
 from config import (
     SAMPLE_RATE, CHANNELS, VAD_CHUNK_SAMPLES,
-    WHISPER_MODEL, WAKE_WORDS, WS_HOST, WS_PORT
+    WHISPER_PASSIVE_MODEL, WHISPER_ACTIVE_MODEL,
+    WAKE_WORDS, WS_HOST, WS_PORT
 )
 from vad_detector import VADDetector
 from transcriber import WhisperTranscriber
@@ -101,7 +102,10 @@ class VoiceServer:
 
             # If a complete utterance was detected, transcribe it
             if utterance is not None:
-                text = await self.transcriber.transcribe(utterance)
+                # Use turbo model in ACTIVE state for high-quality command transcription,
+                # base model in PASSIVE state for lightweight wake word detection
+                is_active = self.state_machine and self.state_machine.state == State.ACTIVE
+                text = await self.transcriber.transcribe(utterance, active=is_active)
 
                 if text:
                     await self.state_machine.process_transcription(text)
@@ -171,7 +175,8 @@ class VoiceServer:
         await self.send_message(
             "status",
             vad=True,
-            model=WHISPER_MODEL,
+            passive_model=WHISPER_PASSIVE_MODEL,
+            active_model=WHISPER_ACTIVE_MODEL,
             wake_word=" or ".join(WAKE_WORDS)
         )
 

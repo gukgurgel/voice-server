@@ -16,17 +16,17 @@ cmake --version > /dev/null 2>&1 || {
 # Clone and build whisper.cpp with CMake
 if [ ! -f "whisper.cpp/build/bin/whisper-cli" ]; then
     if [ ! -d "whisper.cpp" ]; then
-        echo "[1/4] Cloning whisper.cpp..."
+        echo "[1/5] Cloning whisper.cpp..."
         git clone https://github.com/ggml-org/whisper.cpp.git
     fi
-    echo "[1/4] Building whisper.cpp (CMake)..."
+    echo "[1/5] Building whisper.cpp (CMake)..."
     cd whisper.cpp
     cmake -B build
     cmake --build build -j --config Release
     cd ..
-    echo "[1/4] Build complete: whisper.cpp/build/bin/whisper-cli"
+    echo "[1/5] Build complete: whisper.cpp/build/bin/whisper-cli"
 else
-    echo "[1/4] whisper.cpp already built"
+    echo "[1/5] whisper.cpp already built"
 fi
 
 # Verify the binary works
@@ -36,24 +36,35 @@ if ! ./whisper.cpp/build/bin/whisper-cli --help > /dev/null 2>&1; then
     exit 1
 fi
 
-# Download model
+# Download models
+mkdir -p models
+
 if [ ! -f "models/ggml-base.en.bin" ]; then
-    echo "[2/4] Downloading Whisper base.en model..."
-    mkdir -p models
+    echo "[2/5] Downloading Whisper base.en model (passive/wake word)..."
     cd whisper.cpp
     bash ./models/download-ggml-model.sh base.en
     cp models/ggml-base.en.bin ../models/
     cd ..
 else
-    echo "[2/4] Model already downloaded"
+    echo "[2/5] base.en model already downloaded"
+fi
+
+if [ ! -f "models/ggml-large-v3-turbo.bin" ]; then
+    echo "[3/5] Downloading Whisper large-v3-turbo model (active/commands)..."
+    cd whisper.cpp
+    bash ./models/download-ggml-model.sh large-v3-turbo
+    cp models/ggml-large-v3-turbo.bin ../models/
+    cd ..
+else
+    echo "[3/5] large-v3-turbo model already downloaded"
 fi
 
 # Install Python dependencies
-echo "[3/4] Installing Python dependencies..."
+echo "[4/5] Installing Python dependencies..."
 pip3 install -r requirements.txt
 
 # Test microphone
-echo "[4/4] Testing microphone access..."
+echo "[5/5] Testing microphone access..."
 python3 -c "
 import sounddevice as sd
 devices = sd.query_devices()

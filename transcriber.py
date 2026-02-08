@@ -20,18 +20,19 @@ from typing import Optional
 import asyncio
 from config import (
     SAMPLE_RATE, CHANNELS, WHISPER_PATH, WHISPER_MODEL_PATH,
-    WHISPER_MODEL, WHISPER_LANGUAGE, WHISPER_THREADS,
-    MAX_RECORDING_DURATION_S
+    WHISPER_PASSIVE_MODEL, WHISPER_ACTIVE_MODEL, WHISPER_LANGUAGE,
+    WHISPER_THREADS, MAX_RECORDING_DURATION_S
 )
 
 
 class WhisperTranscriber:
     def __init__(self):
-        """Initialize whisper.cpp transcriber."""
+        """Initialize whisper.cpp transcriber with passive + active models."""
         self.whisper_path = Path(WHISPER_PATH)
-        self.model_path = Path(WHISPER_MODEL_PATH) / f"ggml-{WHISPER_MODEL}.bin"
+        self.passive_model_path = Path(WHISPER_MODEL_PATH) / f"ggml-{WHISPER_PASSIVE_MODEL}.bin"
+        self.active_model_path = Path(WHISPER_MODEL_PATH) / f"ggml-{WHISPER_ACTIVE_MODEL}.bin"
 
-        # Validate paths at startup — fail fast
+        # Validate binary at startup — fail fast
         if not self.whisper_path.exists():
             raise FileNotFoundError(
                 f"whisper.cpp binary not found at {self.whisper_path}\n"
@@ -41,25 +42,32 @@ class WhisperTranscriber:
                 f"  cmake --build build -j --config Release"
             )
 
-        if not self.model_path.exists():
-            raise FileNotFoundError(
-                f"Model not found at {self.model_path}\n"
-                f"Download:\n"
-                f"  cd whisper.cpp\n"
-                f"  bash ./models/download-ggml-model.sh {WHISPER_MODEL}"
-            )
+        # Validate both models at startup
+        for label, model_name, model_path in [
+            ("Passive", WHISPER_PASSIVE_MODEL, self.passive_model_path),
+            ("Active", WHISPER_ACTIVE_MODEL, self.active_model_path),
+        ]:
+            if not model_path.exists():
+                raise FileNotFoundError(
+                    f"{label} model not found at {model_path}\n"
+                    f"Download:\n"
+                    f"  cd whisper.cpp\n"
+                    f"  bash ./models/download-ggml-model.sh {model_name}"
+                )
 
-        print(f"[Whisper] Initialized with model {WHISPER_MODEL}")
+        print(f"[Whisper] Passive model: {WHISPER_PASSIVE_MODEL} ({self.passive_model_path})")
+        print(f"[Whisper] Active model:  {WHISPER_ACTIVE_MODEL} ({self.active_model_path})")
         print(f"[Whisper] Binary: {self.whisper_path}")
-        print(f"[Whisper] Model: {self.model_path}")
         print(f"[Whisper] Threads: {WHISPER_THREADS}")
 
-    async def transcribe(self, audio: np.ndarray) -> Optional[str]:
+    async def transcribe(self, audio: np.ndarray, active: bool = False) -> Optional[str]:
         """
         Transcribe audio using whisper.cpp.
 
         Args:
             audio: numpy array of audio samples (16kHz, mono, float32, range [-1, 1])
+            active: if True, use the high-quality active model (for commands);
+                    if False, use the lightweight passive model (for wake word)
 
         Returns:
             Transcribed text or None if transcription failed/empty
@@ -77,7 +85,9 @@ class WhisperTranscriber:
             audio = audio[:MAX_RECORDING_DURATION_S * SAMPLE_RATE]
             duration_s = MAX_RECORDING_DURATION_S
 
-        print(f"[Whisper] Transcribing {duration_s:.1f}s of audio...")
+        model_path = self.active_model_path if active else self.passive_model_path
+        model_label = "active/turbo" if active else "passive/base"
+        print(f"[Whisper] Transcribing {duration_s:.1f}s of audio ({model_label})...")
 
         # We need two temp files:
         #   1. WAV input (whisper-cli needs a file, no stdin WAV support)
@@ -105,7 +115,7 @@ class WhisperTranscriber:
             tmp_out_txt = tmp_out_base + ".txt"
 
             # Run whisper-cli
-            text = await self._run_whisper(tmp_wav_path, tmp_out_base)
+            text = await self._run_whisper(tmp_wav_path, tmp_out_base, model_path)
             return text
 
         except Exception as e:
@@ -123,7 +133,7 @@ class WhisperTranscriber:
                     except OSError:
                         pass
 
-    async def _run_whisper(self, audio_path: str, output_base: str) -> Optional[str]:
+    async def _run_whisper(self, audio_path: str, output_base: str, model_path: Path) -> Optional[str]:
         """
         Run whisper.cpp binary and return transcribed text.
 
@@ -132,7 +142,7 @@ class WhisperTranscriber:
         """
         cmd = [
             str(self.whisper_path),
-            '-m', str(self.model_path),
+            '-m', str(model_path),
             '-f', audio_path,
             '-l', WHISPER_LANGUAGE,
             '-t', str(WHISPER_THREADS),
