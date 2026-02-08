@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo_wihtout_background.png" alt="Tab Whisperer" width="200">
+</p>
+
 ## Tab Whisperer — Voice Server
 
 Local Python server that listens to the microphone, detects a wake word, transcribes voice commands with Whisper, and sends them to the browser extension over WebSocket.
@@ -6,9 +10,29 @@ Local Python server that listens to the microphone, detects a wake word, transcr
 Mic → VAD (Silero) → Whisper (whisper.cpp) → WebSocket → Extension
 ```
 
+### Project Structure
+
+```
+voice-server/
+├── server.py             # WebSocket server + audio capture orchestration
+├── state_machine.py      # PASSIVE/ACTIVE state machine + wake word detection
+├── transcriber.py        # Whisper.cpp wrapper (passive: base.en, active: turbo)
+├── vad_detector.py       # Silero VAD voice activity detection
+├── config.py             # All tunable settings (models, ports, thresholds)
+├── ws_monitor.py         # WebSocket debugging/monitoring tool
+├── setup.sh              # One-shot setup: build whisper.cpp + download models
+├── requirements.txt      # Python dependencies
+├── models/               # Downloaded Whisper GGML models
+│   ├── ggml-base.en.bin           # Passive model (wake word detection)
+│   └── ggml-large-v3-turbo.bin   # Active model (command transcription)
+└── whisper.cpp/          # Cloned & built whisper.cpp (created by setup.sh)
+    └── build/bin/whisper-cli
+```
+
 ### Quick Setup
 
 ```bash
+chmod +x setup.sh
 ./setup.sh      # clones whisper.cpp, builds with CMake, downloads model, installs deps
 ```
 
